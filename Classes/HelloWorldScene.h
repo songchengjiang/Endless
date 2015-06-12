@@ -24,7 +24,6 @@ private:
 
 	void drawLines();
 	void drawPattern(float radius1, float radius2, float radius3, const cocos2d::Color3B &color);
-	void drawRangeLine(float radius);
 	void onTouchBegining(const std::vector<cocos2d::Touch*> &touchs, cocos2d::Event *event);
 	void onTouchMoving(const std::vector<cocos2d::Touch*> &touchs, cocos2d::Event *event);
 	void onTouchEnding(const std::vector<cocos2d::Touch*> &touchs, cocos2d::Event *event);
@@ -34,13 +33,9 @@ private:
 	cocos2d::RenderTexture *_renderTex;
 	cocos2d::DrawNode *_drawNode;
 	float _theta;
-	cocos2d::Vec3 _currentCirclePos;
-	cocos2d::Vec2 _center;
-	float _markRadius;
 
-	cocos2d::Mat4 _baseMat;
-	cocos2d::Mat4 _firstMat;
-	cocos2d::Mat4 _secondMat;
+	cocos2d::Node *_circle;
+	cocos2d::Node *_mark;
 };
 
 #endif // __HELLOWORLD_SCENE_H__

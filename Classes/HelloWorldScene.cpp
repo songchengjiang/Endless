@@ -2,6 +2,9 @@
 
 USING_NS_CC;
 
+static const float RANGE_RADIUS = 300.0f;
+static const float CIRCLE_RADIUS = 140.0f;
+
 Scene* HelloWorld::createScene()
 {
     // 'scene' is an autorelease object
@@ -72,30 +75,33 @@ bool HelloWorld::init()
     //// add the sprite as a child to this layer
     //this->addChild(sprite, 0);
 
-	_center = Vec2(visibleSize.width / 2.0f, visibleSize.height / 2.0f);
 	auto listener = EventListenerTouchAllAtOnce::create();
 	listener->onTouchesBegan = CC_CALLBACK_2(HelloWorld::onTouchBegining, this);
 	listener->onTouchesMoved = CC_CALLBACK_2(HelloWorld::onTouchMoving, this);
 	_eventDispatcher->addEventListenerWithSceneGraphPriority(listener, this);
 
+	auto layer = Layer::create();
+	layer->setPosition(visibleSize.width / 2.0f, visibleSize.height / 2.0f);
+	this->addChild(layer);
+
 	_renderTex = RenderTexture::create(visibleSize.width, visibleSize.height, Texture2D::PixelFormat::RGBA8888);
-	_renderTex->setPosition(_center);
-	_renderTex->retain();
 	_renderTex->clear(1.0f, 1.0f, 1.0f, 1.0f);
-	this->addChild(_renderTex, -1);
+	layer->addChild(_renderTex, -1);
+
+	_circle = Node::create();
+	_mark = Node::create();
+	layer->addChild(_circle);
+	_circle->addChild(_mark);
+	_circle->setPosition(Vec2(RANGE_RADIUS - CIRCLE_RADIUS, 0.0f));
 
 	_drawNode = DrawNode::create();
-	_drawNode->setPosition(_center);
-	_drawNode->drawCircle(Vec2(300.0f - 140.0f, 0.0f), 140.0f, 0.0, 32, false, Color4F(0.5f, 0.5f, 0.5f, 1.0f));
-	this->addChild(_drawNode);
+	_drawNode->drawCircle(Vec2(_circle->getPositionX(), _circle->getPositionY()), CIRCLE_RADIUS, 0.0, 64, false, Color4F(1.0f, 0.0f, 0.0f, 1.0f));
+	_drawNode->drawCircle(Vec2::ZERO, RANGE_RADIUS, 0.0f, 64, false, Color4F(0.0f, 0.0f, 0.0f, 1.0f));
+	layer->addChild(_drawNode);
 
-	drawRangeLine(300.0f);
 	scheduleUpdate();
 
 	_theta = 0.0f;
-	_baseMat.translate(Vec3(visibleSize.width / 2.0f, visibleSize.height / 2.0f, 0.0f));
-	_firstMat.translate(Vec3(300.0f - 140.0f, 0.0f, 0.0f));
-	_secondMat.translate(Vec3(0.0f, 0.0f, 0.0f));
     return true;
 }
 
@@ -151,19 +157,19 @@ void HelloWorld::drawPattern(float radius1, float radius2, float radius3, const 
 {
 	_renderTex->begin();
 	Size visibleSize = Director::getInstance()->getVisibleSize();
-	_baseMat = Mat4::IDENTITY;
-	_firstMat = Mat4::IDENTITY;
-	_secondMat = Mat4::IDENTITY;
+	Mat4 baseMat = Mat4::IDENTITY;
+	Mat4 firstMat = Mat4::IDENTITY;
+	Mat4 secondMat = Mat4::IDENTITY;
 
-	_baseMat.translate(Vec3(visibleSize.width / 2.0f, visibleSize.height / 2.0f, 0.0f));
-	_firstMat.translate(Vec3(radius1 - radius2, 0.0f, 0.0f));
-	_secondMat.translate(Vec3(radius3, 0.0f, 0.0f));
+	baseMat.translate(Vec3(visibleSize.width / 2.0f, visibleSize.height / 2.0f, 0.0f));
+	firstMat.translate(Vec3(radius1 - radius2, 0.0f, 0.0f));
+	secondMat.translate(Vec3(radius3, 0.0f, 0.0f));
 
-	_firstMat.rotate(Vec3(0.0f, 0.0f, 1.0f), -_theta);
+	firstMat.rotate(Vec3(0.0f, 0.0f, 1.0f), -_theta);
 	float theta1 = (_theta * radius2) / radius1;
-	_baseMat.rotate(Vec3(0.0f, 0.0f, 1.0f), theta1);
+	baseMat.rotate(Vec3(0.0f, 0.0f, 1.0f), theta1);
 
-	Mat4 mat = _baseMat * _firstMat * _secondMat;
+	Mat4 mat = baseMat * firstMat * secondMat;
 	auto sprite = Sprite::create("fire.png");
 	sprite->setScale(0.2f);
 	sprite->setColor(color);
@@ -187,22 +193,6 @@ void HelloWorld::update(float delta)
 	//}
 }
 
-void HelloWorld::drawRangeLine(float radius)
-{
-	Size visibleSize = Director::getInstance()->getVisibleSize();
-	_renderTex->begin();
-	for (float theta = 0.0f; theta < 2.0f * M_PI; theta += 0.01f){
-		float x = radius * cosf(theta);
-		float y = radius * sinf(theta);
-		auto sprite = Sprite::create("fire.png");
-		sprite->setScale(0.1f);
-		sprite->setColor(Color3B::BLACK);
-		sprite->setPosition(x + visibleSize.width / 2.0f, y + visibleSize.height / 2.0f);
-		sprite->visit();
-	}
-	_renderTex->end();
-}
-
 void HelloWorld::onTouchMoving(const std::vector<cocos2d::Touch*> &touchs, cocos2d::Event *event)
 {
 	if (0 < touchs.size()){
@@ -224,6 +214,7 @@ void HelloWorld::onTouchBegining(const std::vector<cocos2d::Touch*> &touchs, coc
 {
 	if (0 < touchs.size()){
 		auto location = touchs[0]->getLocation();
+		Mat4 mat = _circle->getWorldToNodeTransform();
 		Mat4 inv = (_baseMat * _firstMat).getInversed();
 		Vec3 localPos;
 		inv.transformPoint(Vec3(location.x, location.y, 0.0f), &localPos);
